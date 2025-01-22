@@ -147,38 +147,15 @@
         </div>
       </div>
 
-      <!-- History Section - Takes up 1 column -->
+       <!-- History Section - Takes up 1 column -->
       <div class="glass-effect rounded-lg shadow-lg p-6 h-[600px] flex flex-col">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">Prediction History</h2>
         <!-- History list with scroll -->
         <div id="historyList" class="flex-1 overflow-y-auto history-scroll space-y-4">
-          <!-- History items will be added here dynamically -->
-
-          <!-- Single Prediction Item -->
-          {% for prediction in predictions %}
-          <div class="bg-white/70 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200">
-            <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <h3 class="text-lg font-medium text-gray-900">{{ prediction.banana_type }}</h3>
-                  <span class="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">Correct</span>
-                </div>
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-500">{{ prediction.prediction_timestamp }}</span>
-                  <div class="flex items-center">
-                    <div class="h-2 w-20 bg-gray-200 rounded-full overflow-hidden">
-                      <div class="h-full bg-green-500 rounded-full" style="width: 92%"></div>
-                    </div>
-                    <span class="ml-2 text-sm font-medium text-gray-600">{{ prediction.confidence_score }}%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-
+          <!-- History items will be added here dynamically using javascript-->
         </div>
       </div>
+      
     </div>
   </div>
   <!--Scripts -->
@@ -187,15 +164,15 @@
     src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.js"></script>
   <script src="https://unpkg.com/filepond@^4/dist/filepond.js"></script>
   <script>
-    // Get reference to the elements
+        // Get reference to the elements
     const inputElement = document.querySelector('input[type="file"]');
     const predictBtn = document.getElementById('predictBtn');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const resultsSection = document.getElementById('results');
-
+    
     // Register FilePond plugins
     FilePond.registerPlugin(FilePondPluginImagePreview);
-
+    
     // Create FilePond instance
     const pond = FilePond.create(inputElement, {
       onaddfile: (error, file) => {
@@ -214,18 +191,18 @@
         resultsSection.classList.add('hidden');
       }
     });
-
+    
     // Add click handler for predict button
     predictBtn.addEventListener('click', async () => {
       // Show loading indicator
       loadingIndicator.classList.remove('hidden');
       predictBtn.classList.add('hidden');
-
+    
       try {
         // Get the file from FilePond
         const file = pond.getFile().file;
-        console.log(file)
-
+        console.log(file);
+    
         // Ensure a file is selected
         if (!file) {
           alert('Please select a file before predicting.');
@@ -233,42 +210,101 @@
           loadingIndicator.classList.add('hidden');
           return;
         }
-
+    
         // Create FormData and append the file
         const formData = new FormData();
         formData.append('file', file);
-
+    
         // Send the file to the Flask backend
         const response = await fetch('/predict', {
           method: 'POST',
           body: formData,
         });
-
+    
         // Check if the response is OK
         if (!response.ok) {
           throw new Error(`Prediction failed: ${response.statusText}`);
         }
-
+    
         // Parse the response JSON
         const result = await response.json();
-
+    
         // Update results based on API response
         document.getElementById('prediction').textContent = result.predicted_class || 'Unknown';
         document.getElementById('confidence').textContent = `${(result.probability * 100).toFixed(2)}%`;
-
+    
         // Show results
         resultsSection.classList.remove('hidden');
       } catch (error) {
         console.error('Prediction failed:', error);
         alert('Failed to process image. Please try again.');
-
+    
         // Show predict button again in case of error
         predictBtn.classList.remove('hidden');
       } finally {
         // Hide loading indicator
         loadingIndicator.classList.add('hidden');
+        await fetchPredictionHistory();
       }
     });
+    
+    async function fetchPredictionHistory() {
+      try {
+        const response = await fetch('/history');
+        if (!response.ok) {
+          throw new Error('Failed to fetch prediction history');
+        }
+    
+        const data = await response.json();
+    
+        // Get the predictions container
+        const historyContainer = document.getElementById('historyList');
+    
+        if (data.predictions && data.predictions.length > 0) {
+          // Clear existing content before appending
+          historyContainer.innerHTML = '';
+    
+          data.predictions.forEach(prediction => {
+            const predictionElement = document.createElement('div');
+            predictionElement.classList.add('bg-white/70', 'rounded-lg', 'p-4', 'shadow-sm', 'hover:shadow-md', 'transition-all', 'duration-200'); 
+
+            predictionElement.innerHTML = `
+              <div class="flex items-center justify-between p-4 border-b">
+                <div class="flex items-center gap-4 flex-1">
+                  <div class="w-16 h-16 rounded-lg overflow-hidden">
+                    <img src="${prediction.photo_path}" alt="${prediction.banana_type}" class="w-full h-full object-cover">
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <h3 class="text-lg font-medium text-gray-900">${prediction.banana_type}</h3>
+                      <span class="text-sm text-gray-500"${prediction.prediction_timestamp}</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                      <div class="flex items-center">
+                        <div class="h-2 w-20 bg-gray-200 rounded-full overflow-hidden">
+                          <div class="h-full bg-green-500 rounded-full" style="width: ${Math.min(prediction.confidence_score, 100)}%"></div>
+                        </div>
+                        <span class="ml-2 text-sm font-medium text-gray-600">${prediction.confidence_score.toFixed(2)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+    
+            historyContainer.appendChild(predictionElement);
+          });
+        } else {
+          historyContainer.innerHTML = '<p>No prediction history available.</p>';
+        }
+      } catch (error) {
+        console.error('Error fetching prediction history:', error);
+        document.getElementById('historyList').innerHTML = '<p>Error fetching prediction history.</p>';
+      }
+    }
+    
+    // Call the function to fetch and render history when the page loads
+    window.onload = fetchPredictionHistory;
 
   </script>
 </body>
