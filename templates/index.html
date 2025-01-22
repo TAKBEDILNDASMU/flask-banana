@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Durian Type Prediction</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FilePond CSS -->
+  <link href="https://unpkg.com/filepond@^4/dist/filepond.css" rel="stylesheet" />
+  <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <style>
+    body {
+      /* Rich purple to soft pink gradient */
+      background: url('./banana.webp');
+      background-size: cover;
+    }
+
+    h1 {
+      font-family: 'Pacifico', cursive;
+      color: #fbbf24;
+      /* Durian flesh yellow */
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      display: inline-block;
+      animation: bounce 2s infinite;
+    }
+
+    p {
+      color: #5c735e;
+      /* A greenish tone to match the durian theme */
+      font-family: 'Arial', sans-serif;
+      /* Clean and readable */
+      font-size: 16px;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .durian-button {
+      background-color: #fbbf24;
+      /* Durian yellow */
+      color: white;
+      border: none;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    button:hover {
+      background-color: #d4a017;
+      /* Slightly darker shade for hover effect */
+    }
+
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .filepond--panel-root {
+      background-color: #f3f4f6;
+      border: 2px dashed #d1d5db;
+    }
+
+    .filepond--drop-label {
+      color: #374151;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <h1 class="text-4xl font-bold mb-2 drop-shadow-lg">Banana Type Prediction </h1>
+      <p class="text-lg text-center text-gray-800 bg-white/60 rounded-lg p-2 mt-2 w-fit mx-auto">Upload a photo of
+        Banana trees to identify the type</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Content - Takes up 2 columns -->
+      <div class="lg:col-span-2">
+        <div class="glass-effect rounded-lg shadow-lg p-6 mb-6">
+          <!-- Upload Section -->
+          <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Upload Image</h2>
+            <input type="file" class="w-full" />
+            <!-- Predict Button - Initially hidden -->
+            <button id="predictBtn" class="hidden durian-button">
+              Predict Banana Type
+            </button>
+            <!-- Loading indicator - Initially hidden -->
+            <div id="loadingIndicator" class="hidden mt-4 text-center">
+              <div
+                class="animate-spin inline-block w-6 h-6 border-[3px] border-indigo-600 border-t-transparent rounded-full">
+              </div>
+              <span class="ml-2 text-gray-600">Processing image...</span>
+            </div>
+          </div>
+          <!-- Results Section (initially hidden) -->
+          <div id="results" class="hidden">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Prediction Results</h2>
+            <div
+              class="bg-gradient-to-r from-green-50 to-yellow-50 rounded-lg p-4 shadow-inner border border-green-100">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-700">Predicted Type:</span>
+                <span id="prediction" class="font-semibold text-green-700">-</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-gray-700">Confidence:</span>
+                <span id="confidence" class="font-semibold text-yellow-600">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="glass-effect rounded-lg shadow-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-700 mb-4">Instructions</h2>
+          <ul class="list-disc list-inside text-gray-600 space-y-2">
+            <li>Upload a clear photo of banana trees</li>
+            <li>Image should be well-lit and in focus</li>
+            <li>Supported formats: JPG, PNG</li>
+            <li>Maximum file size: 5MB</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- History Section - Takes up 1 column -->
+      <div class="glass-effect rounded-lg shadow-lg p-6 h-[600px] flex flex-col">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Prediction History</h2>
+        <!-- History list with scroll -->
+        <div id="historyList" class="flex-1 overflow-y-auto history-scroll space-y-4">
+          <!-- History items will be added here dynamically -->
+
+          <!-- Single Prediction Item -->
+          {% for prediction in predictions %}
+          <div class="bg-white/70 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <h3 class="text-lg font-medium text-gray-900">{{ prediction.banana_type }}</h3>
+                  <span class="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">Correct</span>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-sm text-gray-500">{{ prediction.prediction_timestamp }}</span>
+                  <div class="flex items-center">
+                    <div class="h-2 w-20 bg-gray-200 rounded-full overflow-hidden">
+                      <div class="h-full bg-green-500 rounded-full" style="width: 92%"></div>
+                    </div>
+                    <span class="ml-2 text-sm font-medium text-gray-600">{{ prediction.confidence_score }}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--Scripts -->
+  <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
+  <script
+    src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.js"></script>
+  <script src="https://unpkg.com/filepond@^4/dist/filepond.js"></script>
+  <script>
+    // Get reference to the elements
+    const inputElement = document.querySelector('input[type="file"]');
+    const predictBtn = document.getElementById('predictBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultsSection = document.getElementById('results');
+
+    // Register FilePond plugins
+    FilePond.registerPlugin(FilePondPluginImagePreview);
+
+    // Create FilePond instance
+    const pond = FilePond.create(inputElement, {
+      onaddfile: (error, file) => {
+        if (error) {
+          console.error('Error adding file:', error);
+          return;
+        }
+        // Show predict button when file is added
+        predictBtn.classList.remove('hidden');
+        // Hide results if they were shown
+        resultsSection.classList.add('hidden');
+      },
+      onremovefile: () => {
+        // Hide predict button and results when file is removed
+        predictBtn.classList.add('hidden');
+        resultsSection.classList.add('hidden');
+      }
+    });
+
+    // Add click handler for predict button
+    predictBtn.addEventListener('click', async () => {
+      // Show loading indicator
+      loadingIndicator.classList.remove('hidden');
+      predictBtn.classList.add('hidden');
+
+      try {
+        // Get the file from FilePond
+        const file = pond.getFile().file;
+        console.log(file)
+
+        // Ensure a file is selected
+        if (!file) {
+          alert('Please select a file before predicting.');
+          predictBtn.classList.remove('hidden');
+          loadingIndicator.classList.add('hidden');
+          return;
+        }
+
+        // Create FormData and append the file
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Send the file to the Flask backend
+        const response = await fetch('/predict', {
+          method: 'POST',
+          body: formData,
+        });
+
+        // Check if the response is OK
+        if (!response.ok) {
+          throw new Error(`Prediction failed: ${response.statusText}`);
+        }
+
+        // Parse the response JSON
+        const result = await response.json();
+
+        // Update results based on API response
+        document.getElementById('prediction').textContent = result.predicted_class || 'Unknown';
+        document.getElementById('confidence').textContent = `${(result.probability * 100).toFixed(2)}%`;
+
+        // Show results
+        resultsSection.classList.remove('hidden');
+      } catch (error) {
+        console.error('Prediction failed:', error);
+        alert('Failed to process image. Please try again.');
+
+        // Show predict button again in case of error
+        predictBtn.classList.remove('hidden');
+      } finally {
+        // Hide loading indicator
+        loadingIndicator.classList.add('hidden');
+      }
+    });
+
+  </script>
+</body>
+
+</html>
